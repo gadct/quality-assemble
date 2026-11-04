@@ -1,29 +1,27 @@
 # Quality Assemble updater.
-# Downloads the latest GitHub Release asset (quality-assemble.zip) and replaces the installed extension files.
-# User data is NOT in this folder (it lives in Chrome's storage), so replacing files is safe.
-# -Silencioso: no console output or prompts (used by the Windows startup shortcut).
+# Downloads the latest GitHub Release and replaces the installed extension folders:
+#   %LOCALAPPDATA%\QualityAssemble\extension          (Chrome, Edge, Opera, Opera GX, Brave, Vivaldi)
+#   %LOCALAPPDATA%\QualityAssemble\extension-firefox  (Firefox)
+# User data is NOT in these folders (it lives in the browser's storage), so replacing files is safe.
+# -Silencioso: no console output or prompts (used by the Windows startup shortcut and the installer).
 param([switch]$Silencioso)
 
 $ErrorActionPreference = 'Stop'
-$Repo  = 'gadct/quality-assemble'
-$Asset = 'quality-assemble.zip'
-$Base  = Join-Path $env:LOCALAPPDATA 'QualityAssemble'
-$Dest  = Join-Path $Base 'extension'
+$Repo = 'gadct/quality-assemble'
+$Base = Join-Path $env:LOCALAPPDATA 'QualityAssemble'
 $LogFile = Join-Path $Base 'actualizar.log'
 $Headers = @{ 'User-Agent' = 'QualityAssemble-Updater'; 'Accept' = 'application/vnd.github+json' }
+$Targets = @(
+    @{ Asset = 'quality-assemble.zip';         Folder = 'extension' },
+    @{ Asset = 'quality-assemble-firefox.zip'; Folder = 'extension-firefox' }
+)
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 if (-not (Test-Path $Base)) { New-Item -ItemType Directory -Path $Base | Out-Null }
 
 function Log($msg) {
-    $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg"
-    Add-Content -Path $LogFile -Value $line -Encoding UTF8
+    Add-Content -Path $LogFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" -Encoding UTF8
     if (-not $Silencioso) { Write-Host $msg }
-}
-
-function Finish($code) {
-    if (-not $Silencioso) { Read-Host 'Presiona Enter para cerrar' | Out-Null }
-    exit $code
 }
 
 function Get-ManifestVersion($folder) {
@@ -32,48 +30,53 @@ function Get-ManifestVersion($folder) {
     return [version]((Get-Content $mf -Raw -Encoding UTF8 | ConvertFrom-Json).version)
 }
 
-$tmp = Join-Path $env:TEMP ('qa-update-' + [guid]::NewGuid())
-try {
-    $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $Headers -TimeoutSec 30
-    $remote = [version]($rel.tag_name.TrimStart('v'))
-    $local = Get-ManifestVersion $Dest
+function Update-Target($rel, $remote, $target, $tmp) {
+    $dest = Join-Path $Base $target.Folder
+    $local = Get-ManifestVersion $dest
+    if ($remote -le $local) { return "$($target.Folder): ya en $local" }
 
-    if ($remote -le $local) {
-        Log "Quality Assemble ya esta actualizado (version $local)."
-        Finish 0
-    }
+    $item = $rel.assets | Where-Object { $_.name -eq $target.Asset } | Select-Object -First 1
+    if (-not $item) { return "$($target.Folder): el release no trae $($target.Asset), se omite" }
 
-    $item = $rel.assets | Where-Object { $_.name -eq $Asset } | Select-Object -First 1
-    if (-not $item) { throw "El release $($rel.tag_name) no incluye $Asset." }
-
-    New-Item -ItemType Directory -Path $tmp | Out-Null
-    $zip = Join-Path $tmp $Asset
-    $staging = Join-Path $tmp 'extension'
-    Log "Descargando version $remote..."
+    $zip = Join-Path $tmp $target.Asset
+    $staging = Join-Path $tmp $target.Folder
     Invoke-WebRequest -Uri $item.browser_download_url -OutFile $zip -Headers $Headers -UseBasicParsing -TimeoutSec 120
     Expand-Archive -Path $zip -DestinationPath $staging -Force
 
     $newVersion = Get-ManifestVersion $staging
-    if ($newVersion -ne $remote) { throw "El zip trae la version $newVersion y el release dice $remote. No se instalo nada." }
+    if ($newVersion -ne $remote) { throw "$($target.Asset) trae la version $newVersion y el release dice $remote" }
 
-    # Swap folders: keep the old copy until the new one is in place.
-    $old = "$Dest.old"
-    if (Test-Path $old) { Remove-Item $old -Recurse -Force }
-    if (Test-Path $Dest) { Rename-Item -Path $Dest -NewName (Split-Path $old -Leaf) }
+    # Copy fully next to the install, then swap with two renames.
+    # The extension may reload itself at any moment, so it must never see a half-copied folder.
+    $new = "$dest.new"
+    $old = "$dest.old"
+    foreach ($p in $new, $old) { if (Test-Path $p) { Remove-Item $p -Recurse -Force } }
+    Copy-Item -Path $staging -Destination $new -Recurse
+    if (Test-Path $dest) { Rename-Item -Path $dest -NewName (Split-Path $old -Leaf) }
     try {
-        Copy-Item -Path $staging -Destination $Dest -Recurse
+        Rename-Item -Path $new -NewName (Split-Path $dest -Leaf)
     } catch {
-        if (Test-Path $Dest) { Remove-Item $Dest -Recurse -Force }
-        if (Test-Path $old) { Rename-Item -Path $old -NewName (Split-Path $Dest -Leaf) }
+        if (Test-Path $old) { Rename-Item -Path $old -NewName (Split-Path $dest -Leaf) }
         throw
     }
     if (Test-Path $old) { Remove-Item $old -Recurse -Force -ErrorAction SilentlyContinue }
+    return "$($target.Folder): actualizado de $local a $remote"
+}
 
-    Log "Actualizado de $local a $remote. Abre Quality Assemble y presiona 'Aplicar ahora', o reinicia Chrome."
-    Finish 0
+$tmp = Join-Path $env:TEMP ('qa-update-' + [guid]::NewGuid())
+$code = 0
+try {
+    $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $Headers -TimeoutSec 30
+    $remote = [version]($rel.tag_name.TrimStart('v'))
+    New-Item -ItemType Directory -Path $tmp | Out-Null
+    foreach ($t in $Targets) { Log (Update-Target $rel $remote $t $tmp) }
+    Log "Listo (ultima version publicada: $remote). Los cambios se aplican solos con la herramienta cerrada, o al reiniciar el navegador."
 } catch {
     Log "No se pudo actualizar: $($_.Exception.Message)"
-    Finish 1
+    $code = 1
 } finally {
     if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+if (-not $Silencioso) { Read-Host 'Presiona Enter para cerrar' | Out-Null }
+exit $code

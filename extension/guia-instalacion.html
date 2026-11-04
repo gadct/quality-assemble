@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Activar Quality Assemble</title>
+  <!-- Opened by instalar.ps1 as a local file (file://?b=<browser>), before the extension is loaded. No extension APIs here. -->
+  <style>
+    body { font: 15px/1.5 system-ui, "Segoe UI", sans-serif; color: #1f2328; background: #f6f5f2; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .muted { color: #5b616b; }
+    .step { display: flex; gap: 12px; background: #fff; border: 1px solid #d9d6cf; border-radius: 6px; padding: 14px; margin: 10px 0; }
+    .num { flex: 0 0 28px; height: 28px; border-radius: 50%; background: #0b6b62; color: #fff; font-weight: 700; display: grid; place-items: center; }
+    h2 { font-size: 16px; margin: 0 0 4px; }
+    p { margin: 0 0 6px; }
+    code { display: block; background: #f6f5f2; border: 1px solid #d9d6cf; border-radius: 6px; padding: 8px; word-break: break-all; font: 13px Consolas, monospace; margin: 6px 0; }
+    button { font: inherit; font-size: 14px; font-weight: 600; padding: 7px 14px; border: 0; border-radius: 6px; background: #0b6b62; color: #fff; cursor: pointer; }
+    button:focus-visible, select:focus-visible { outline: 2px solid #0b6b62; outline-offset: 2px; }
+    select { font: inherit; padding: 4px 6px; }
+    kbd { border: 1px solid #d9d6cf; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: #fff; font: 13px system-ui, sans-serif; }
+    .note { border: 1px solid #8a5a00; background: #fff8e6; color: #5c3d00; border-radius: 6px; padding: 10px 12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Último paso: activar Quality Assemble</h1>
+  <p class="muted">Solo se hace una vez. Las actualizaciones se instalan solas después.</p>
+  <p><label for="nav">Navegador:</label> <select id="nav"></select></p>
+  <div id="steps"></div>
+
+  <script>
+    // This file lives inside the Chromium extension folder; Firefox uses the sibling "extension-firefox" folder.
+    const folder = decodeURIComponent(location.pathname).replace(/^\/([A-Za-z]:)/, '$1').replace(/\/[^/]*$/, '').replace(/\//g, '\\');
+    const ffManifest = folder.replace(/\\extension$/, '\\extension-firefox') + '\\manifest.json';
+
+    const BROWSERS = {
+      operagx: { name: 'Opera GX', url: 'opera://extensions' },
+      opera:   { name: 'Opera',    url: 'opera://extensions' },
+      chrome:  { name: 'Chrome',   url: 'chrome://extensions' },
+      edge:    { name: 'Edge',     url: 'edge://extensions' },
+      brave:   { name: 'Brave',    url: 'brave://extensions' },
+      vivaldi: { name: 'Vivaldi',  url: 'vivaldi://extensions' },
+      firefox: { name: 'Firefox',  url: 'about:debugging#/runtime/this-firefox' }
+    };
+
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const step = (n, title, body) => `<div class="step"><div class="num">${n}</div><div><h2>${title}</h2>${body}</div></div>`;
+
+    function chromiumSteps(b) {
+      return step(1, 'Abre la página de extensiones', `<p>Debería haberse abierto en otra pestaña. Si no, escribe esto en la barra de direcciones y presiona <kbd>Enter</kbd>:</p><code>${esc(b.url)}</code>`)
+        + step(2, 'Activa el "Modo de desarrollador"', '<p>Es un interruptor en esa página, normalmente arriba a la derecha.</p>')
+        + step(3, 'Presiona "Cargar descomprimida"', '<p>Puede decir "Cargar extensión sin empaquetar" o "Load unpacked". Se abre una ventana para elegir una carpeta.</p>')
+        + step(4, 'Pega la ruta y elige la carpeta', `<p>La ruta ya está copiada. En la ventana, haz clic en la barra de arriba, presiona <kbd>Ctrl</kbd> + <kbd>V</kbd> y <kbd>Enter</kbd>, y luego <strong>Seleccionar carpeta</strong>.</p><code>${esc(folder)}</code><button data-copy="${esc(folder)}">Copiar la ruta otra vez</button>`)
+        + (b.name.startsWith('Opera') ? '<div class="note">En Opera: si al hacer clic en el icono de Quality Assemble no se abre nada, abre la herramienta desde la página de bienvenida o elige "Ventana aparte" en la pestaña Datos.</div>' : '')
+        + '<p class="muted">Al terminar se abre una página de bienvenida. Ya puedes cerrar esta.</p>';
+    }
+
+    function firefoxSteps() {
+      return '<div class="note">En Firefox la extensión se carga de forma <strong>temporal</strong>: hay que repetir estos pasos cada vez que se cierra Firefox. Para el uso diario conviene Opera GX, Chrome o Edge.</div>'
+        + step(1, 'Abre la página de depuración', `<p>Escribe esto en la barra de direcciones y presiona <kbd>Enter</kbd>:</p><code>about:debugging#/runtime/this-firefox</code>`)
+        + step(2, 'Presiona "Cargar complemento temporal..."', '<p>Se abre una ventana para elegir un archivo.</p>')
+        + step(3, 'Pega la ruta del archivo', `<p>Ya está copiada. Pega con <kbd>Ctrl</kbd> + <kbd>V</kbd> en el campo de nombre y presiona <kbd>Enter</kbd>.</p><code>${esc(ffManifest)}</code><button data-copy="${esc(ffManifest)}">Copiar la ruta otra vez</button>`)
+        + step(4, 'Da permiso', '<p>En la página de bienvenida que se abre, presiona <strong>Dar permiso</strong>.</p>');
+    }
+
+    const sel = document.getElementById('nav');
+    sel.innerHTML = Object.entries(BROWSERS).map(([id, b]) => `<option value="${id}">${b.name}</option>`).join('');
+    const initial = new URLSearchParams(location.search).get('b');
+    sel.value = BROWSERS[initial] ? initial : 'chrome';
+
+    function render() {
+      document.getElementById('steps').innerHTML = sel.value === 'firefox' ? firefoxSteps() : chromiumSteps(BROWSERS[sel.value]);
+    }
+    sel.addEventListener('change', render);
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-copy]');
+      if (!btn) return;
+      try { await navigator.clipboard.writeText(btn.dataset.copy); btn.textContent = 'Copiada'; }
+      catch (_) { btn.textContent = 'Selecciona la ruta y copia con Ctrl + C'; }
+    });
+    render();
+  </script>
+</body>
+</html>

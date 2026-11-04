@@ -1,7 +1,8 @@
-# Publishes a release when a tag like v0.2.0 is pushed.
+# Publishes a release when a tag like v0.3.0 is pushed.
 # Assets:
-#   quality-assemble.zip            -> the extension (downloaded by instalador/actualizar.ps1)
-#   quality-assemble-instalador.zip -> installer for a new machine
+#   quality-assemble.zip          -> extension for Chromium browsers (Chrome, Edge, Opera, Opera GX, Brave, Vivaldi)
+#   quality-assemble-firefox.zip  -> same code, manifest adapted for Firefox (sidebar, background scripts, gecko id)
+#   instalar.ps1 / actualizar.ps1 -> installer and updater (downloaded by the one-line install command)
 name: Release
 
 on:
@@ -25,12 +26,25 @@ jobs:
             exit 1
           fi
 
-      - name: Build zips
+      - name: Build Chromium zip
+        run: (cd extension && zip -r ../quality-assemble.zip .)
+
+      - name: Build Firefox zip
         run: |
-          (cd extension && zip -r ../quality-assemble.zip .)
-          (cd instalador && zip -r ../quality-assemble-instalador.zip .)
+          rm -rf build-ff && cp -r extension build-ff
+          jq 'del(.key, .side_panel)
+              | .permissions -= ["sidePanel"]
+              | .background = { scripts: ["background.js"] }
+              | .sidebar_action = { default_panel: "sidepanel.html", default_title: "Quality Assemble", open_at_install: false }
+              | .browser_specific_settings = { gecko: { id: "quality-assemble@gadct", strict_min_version: "128.0" } }' \
+              extension/manifest.json > build-ff/manifest.json
+          (cd build-ff && zip -r ../quality-assemble-firefox.zip .)
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" quality-assemble.zip quality-assemble-instalador.zip --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            quality-assemble.zip quality-assemble-firefox.zip \
+            instalador/instalar.ps1 instalador/actualizar.ps1 \
+            --title "$GITHUB_REF_NAME" --generate-notes

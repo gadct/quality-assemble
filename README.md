@@ -1,31 +1,43 @@
 # Quality Assemble
 
-Extensión de Chrome para hacer QA manual con orientación: checklists de qué probar, registro de sesiones, reporte de bugs con captura y errores técnicos automáticos, registro de dudas y exportación a Excel.
+Extensión de navegador para hacer QA manual con orientación: checklists de qué probar, registro de sesiones, reporte de bugs con captura y errores técnicos automáticos, registro de dudas y exportación a Excel.
 
 - Sin IA, sin servidor, sin costo.
 - Todo se guarda en el navegador de este equipo. Los datos de QA nunca salen del equipo. La única conexión a internet es para buscar actualizaciones en GitHub.
 - No guarda contraseñas: inicias sesión en la web como siempre.
 - Los reportes salen en PDF, Excel o texto, con el nombre de quien los reportó.
+- Funciona en Opera GX, Opera, Chrome, Edge, Brave y Vivaldi. En Firefox funciona, pero solo de forma temporal (ver abajo).
 
 ## Instalación (una sola vez)
 
-1. Descarga el instalador: `https://github.com/gadct/quality-assemble/releases/latest/download/quality-assemble-instalador.zip`
-2. Descomprímelo y haz doble clic en `instalar.cmd`. No necesita permisos de administrador.
-3. El instalador descarga la extensión en `%LOCALAPPDATA%\QualityAssemble\extension`, copia esa ruta al portapapeles y muestra los pasos para Chrome:
-   1. Abre `chrome://extensions` y activa **Modo de desarrollador**.
-   2. Presiona **Cargar descomprimida**, pega la ruta y elige la carpeta.
-   3. Fija el icono de **Quality Assemble** (pieza de rompecabezas de Chrome).
-   4. **Recarga (F5) las pestañas que ya tenías abiertas.** Sin esto no se capturan los errores técnicos.
+1. Presiona **Windows + R**, pega esta línea y presiona **Enter**:
+   ```
+   powershell -ep bypass -c "irm https://github.com/gadct/quality-assemble/releases/latest/download/instalar.ps1 | iex"
+   ```
+   No necesita permisos de administrador. No hay que descargar ni descomprimir nada.
+2. El instalador detecta el navegador predeterminado. Abre su página de extensiones y una guía con los 4 pasos para ese navegador, y deja la ruta copiada en el portapapeles.
+3. Sigue la guía: **Modo de desarrollador** > **Cargar descomprimida** > pega la ruta (`Ctrl + V`) > **Seleccionar carpeta**.
+4. Se abre una página de bienvenida: escribe tu nombre, fija el icono y abre la herramienta.
 
-Para abrir la herramienta, haz clic en su icono. Se abre un panel a la derecha de la página.
+No hace falta recargar las pestañas abiertas: la herramienta se activa sola en ellas.
+
+Ese paso manual no se puede automatizar: los navegadores no permiten que un programa instale extensiones fuera de su tienda. Para eliminarlo habría que publicar la extensión en la Chrome Web Store, que sirve también para Opera y Edge. Eso tiene un costo único de 5 USD y una revisión de Google.
+
+### Cómo se abre según el navegador
+
+- **Chrome, Edge, Brave y Opera reciente**: panel lateral a la derecha de la página.
+- **Navegadores sin panel lateral**: ventana aparte acoplada a la derecha. Las capturas se toman de la última pestaña que usaste.
+- **Opera GX**: si al hacer clic en el icono no aparece nada, ve a **Datos > Tus datos > Cómo se abre la herramienta** y elige **Ventana aparte**. Abre la herramienta desde la página de bienvenida para llegar a esa opción.
+- **Firefox**: barra lateral de Firefox. Se carga como complemento **temporal** desde `about:debugging`, así que hay que repetir la carga cada vez que se abre Firefox. Además, Firefox puede borrar los datos al quitar un complemento temporal. Para el trabajo diario conviene un navegador de la lista anterior. Para dejarlo permanente en Firefox hay que firmarlo en addons.mozilla.org; es gratis, pero no está hecho.
 
 ## Actualizaciones automáticas
 
 - Al iniciar Windows, un actualizador oculto revisa GitHub y descarga la versión nueva si existe.
 - Para actualizar en el momento, usa el acceso directo **Actualizar Quality Assemble** del escritorio.
-- Cuando hay una versión descargada, el panel muestra **Aplicar ahora**. También se aplica sola al reiniciar Chrome.
-- Los datos no se tocan al actualizar: viven en Chrome, no en la carpeta de la extensión.
-- Registro del actualizador: `%LOCALAPPDATA%\QualityAssemble\actualizar.log`.
+- La versión descargada se aplica sola cuando la herramienta está cerrada (revisa cada 30 minutos), o al reiniciar el navegador. Si la herramienta está abierta, el panel muestra **Aplicar ahora**, para que nunca se pierda un bug a medio escribir.
+- Los datos no se tocan al actualizar: viven en el navegador, no en la carpeta de la extensión.
+- Para reparar una instalación, vuelve a ejecutar la línea de instalación.
+- Registro del actualizador: `%LOCALAPPDATA%QualityAssembleactualizar.log`.
 
 ## Uso diario
 
@@ -44,7 +56,7 @@ Para abrir la herramienta, haz clic en su icono. Se abre un panel a la derecha d
 
 ## Respaldo (importante)
 
-Los datos solo existen en este navegador. Si se desinstala la extensión o se borran los datos de Chrome, **se pierden**.
+Los datos solo existen en este navegador. Si se desinstala la extensión o se borran los datos del navegador, **se pierden**.
 
 - Haz **Datos > Descargar respaldo** al menos una vez por semana. La herramienta avisa cuando pasan 7 días.
 - Guarda el archivo en OneDrive, Google Drive o un pendrive.
@@ -70,13 +82,13 @@ Todos los reportes muestran quién los hizo. El nombre se configura al iniciar u
    git tag v0.3.0
    git push origin v0.3.0
    ```
-4. GitHub Actions (`.github/workflows/release.yml`) crea el release con `quality-assemble.zip` y el instalador. Si la versión del manifest no coincide con el tag, falla a propósito.
+4. GitHub Actions (`.github/workflows/release.yml`) crea el release con `quality-assemble.zip` (para Chromium), `quality-assemble-firefox.zip` (manifest adaptado), `instalar.ps1` y `actualizar.ps1`. Si la versión del manifest no coincide con el tag, falla a propósito.
 
 Los equipos instalados toman la versión nueva al iniciar Windows.
 
 **Seguridad:** quien controle este repositorio puede enviar código al navegador de quien usa la extensión, con acceso a todas las páginas que visita. Protege la cuenta de GitHub con verificación en dos pasos y no des permisos de escritura a nadie más.
 
-**ID fijo:** `manifest.json` lleva una `key` que fija el ID de la extensión (`hkebcbhnekmndofnbedbdomnfphanppe`). Así los datos sobreviven aunque cambie la carpeta. No la borres. En un mismo Chrome no se pueden cargar dos copias a la vez (por ejemplo la de desarrollo y la instalada).
+**ID fijo:** `manifest.json` lleva una `key` que fija el ID de la extensión (`hkebcbhnekmndofnbedbdomnfphanppe`). Así los datos sobreviven aunque cambie la carpeta. No la borres. En un mismo navegador no se pueden cargar dos copias a la vez (por ejemplo la de desarrollo y la instalada).
 
 ## Editar el contenido
 
@@ -84,7 +96,7 @@ Las checklists, el glosario, las severidades y la guía "¿Es un bug?" están en
 
 ## Limitaciones conocidas
 
-- No captura errores en páginas internas de Chrome (`chrome://`) ni en la Chrome Web Store.
+- No captura errores en páginas internas del navegador (`chrome://`, `opera://`...) ni en las tiendas de extensiones.
 - Los errores técnicos solo se registran desde que la pestaña se cargó con la extensión instalada.
 - Los errores dentro de marcos incrustados (iframes) no se capturan.
 - El .csv no incluye las imágenes. Se descargan aparte con el nombre del bug (BUG-001.jpg).

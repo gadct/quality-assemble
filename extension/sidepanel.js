@@ -58,7 +58,18 @@ function confirmClick(btn, label) {
 }
 
 // ---------- page context capture ----------
+// In window mode the tool has its own window, so "current window" is not the page being tested.
+// background.js remembers the last page tab the user was on.
+const WINDOW_MODE = new URLSearchParams(location.search).get('modo') === 'ventana';
+const CAN_SIDE_PANEL = !!(chrome.sidePanel && chrome.sidePanel.setPanelBehavior) && typeof browser === 'undefined';
+
 async function activeTab() {
+  if (WINDOW_MODE) {
+    const { targetTabId } = await chrome.storage.session.get('targetTabId');
+    if (targetTabId) { try { return await chrome.tabs.get(targetTabId); } catch (_) { /* closed */ } }
+    const [tab] = await chrome.tabs.query({ active: true, windowType: 'normal' });
+    return tab;
+  }
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab;
 }
@@ -126,6 +137,9 @@ function renderBanner() {
     html += `<div class="banner">Se descargó la versión ${esc(ui.update.version)}. ${ui.draft ? 'Guarda primero el bug que estás editando. ' : ''}<button class="btn small" data-action="apply-update">Aplicar ahora</button></div>`;
   } else if (ui.update && ui.update.tipo === 'disponible') {
     html += `<div class="banner">Hay una versión nueva (${esc(ui.update.version)}). Se instala sola al reiniciar el equipo, o abre el acceso directo "Actualizar Quality Assemble" del escritorio.</div>`;
+  }
+  if (ui.noPermission) {
+    html += `<div class="banner">Falta darle permiso a la herramienta para leer las páginas que pruebas (captura y errores técnicos). <button class="btn small" data-action="grant-permission">Dar permiso</button></div>`;
   }
   if (hasData && old) {
     html += `<div class="banner">Tus datos solo están en este navegador. ${state.lastBackup ? 'El último respaldo fue el ' + esc(fmtDate(state.lastBackup)) + '.' : 'Aún no haces ningún respaldo.'} <button class="btn small" data-action="backup">Hacer respaldo ahora</button></div>`;
@@ -359,6 +373,12 @@ function viewDatos() {
       <h2>Tus datos</h2>
       <label for="set-nombre">Tu nombre <span class="hint">(aparece como "Reportado por")</span></label>
       <input id="set-nombre" data-setting="nombre" value="${esc(state.settings.nombre)}" placeholder="Nombre y apellido">
+      ${CAN_SIDE_PANEL ? `<label for="set-modo">Cómo se abre la herramienta</label>
+      <select id="set-modo" data-setting="modoPanel">
+        <option value="auto" ${state.settings.modoPanel !== 'ventana' ? 'selected' : ''}>Panel lateral del navegador</option>
+        <option value="ventana" ${state.settings.modoPanel === 'ventana' ? 'selected' : ''}>Ventana aparte a la derecha</option>
+      </select>
+      <p class="muted" style="margin-top:4px">Si al hacer clic en el icono no aparece nada (pasa en algunas versiones de Opera), elige "Ventana aparte".</p>` : ''}
     </div>
     <div class="card">
       <h2>Respaldo</h2>
@@ -560,6 +580,12 @@ const actions = {
   },
   'backup': backup,
   'apply-update': () => chrome.runtime.reload(),
+  'grant-permission': async () => {
+    // Firefox treats host permissions as opt-in; must be requested from a click.
+    const ok = await chrome.permissions.request({ origins: ['<all_urls>'] });
+    ui.noPermission = !ok; render();
+    toast(ok ? 'Permiso concedido. Recarga (F5) la página que vas a probar.' : 'Sin permiso no se puede capturar la pantalla.');
+  },
   'pick-restore': () => $('#restore-file').click(),
   'pdf-bug': async () => {
     const id = await saveBug();
@@ -622,4 +648,9 @@ document.addEventListener('change', (e) => {
 
 setInterval(renderSessionBar, 30000);
 
-load().then(render).then(checkUpdates);
+async function checkPermission() {
+  try { ui.noPermission = !(await chrome.permissions.contains({ origins: ['<all_urls>'] })); } catch (_) { ui.noPermission = false; }
+  if (ui.noPermission) renderBanner();
+}
+
+load().then(render).then(checkPermission).then(checkUpdates);
