@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Quality Assemble</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="top">
+    <div id="session-bar" class="session-bar"></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="sesion" aria-selected="true">Sesión</button>
+      <button role="tab" data-tab="probar">Probar</button>
+      <button role="tab" data-tab="bugs">Bugs</button>
+      <button role="tab" data-tab="dudas">Dudas</button>
+      <button role="tab" data-tab="ayuda">Ayuda</button>
+      <button role="tab" data-tab="datos">Datos</button>
+    </nav>
+  </header>
+  <div id="banner"></div>
+  <main id="view"></main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="data.js"></script>
+  <script src="common.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

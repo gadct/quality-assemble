@@ -1,0 +1,39 @@
+/* Print-first layout: A4, black on white, readable when printed in grayscale. */
+@page { size: A4; margin: 16mm 14mm; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 11pt/1.45 system-ui, "Segoe UI", sans-serif; color: #1f2328; background: #f6f5f2; }
+main { max-width: 800px; margin: 0 auto; padding: 24px; background: #fff; }
+
+.toolbar { position: sticky; top: 0; display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: #1f2328; color: #fff; font-size: 13px; }
+.toolbar button { font: inherit; font-weight: 600; padding: 7px 14px; border: 0; border-radius: 6px; background: #0b6b62; color: #fff; cursor: pointer; }
+
+header.doc { border-bottom: 2px solid #1f2328; padding-bottom: 10px; margin-bottom: 16px; }
+header.doc h1 { font-size: 18pt; margin: 0 0 4px; }
+header.doc .meta { color: #5b616b; font-size: 10pt; }
+
+h2 { font-size: 13pt; margin: 18px 0 8px; }
+h3 { font-size: 11pt; margin: 12px 0 4px; }
+p { margin: 0 0 6px; }
+
+table.kv { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 10pt; }
+table.kv th, table.kv td { text-align: left; vertical-align: top; padding: 4px 6px; border: 1px solid #d9d6cf; }
+table.kv th { width: 30%; background: #f6f5f2; font-weight: 600; }
+
+table.list { width: 100%; border-collapse: collapse; font-size: 10pt; }
+table.list th, table.list td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #d9d6cf; vertical-align: top; }
+table.list th { border-bottom: 2px solid #1f2328; }
+
+.bug + .bug { break-before: page; }
+.bug-head { break-after: avoid; }
+.bug-head h2 { margin-top: 0; }
+.pre { white-space: pre-wrap; word-break: break-word; }
+.logs { font: 9pt/1.4 Consolas, monospace; background: #f6f5f2; border: 1px solid #d9d6cf; padding: 6px; white-space: pre-wrap; word-break: break-all; }
+.shot { display: block; max-width: 100%; max-height: 120mm; border: 1px solid #d9d6cf; margin-top: 6px; break-inside: avoid; }
+
+footer.doc { margin-top: 24px; padding-top: 8px; border-top: 1px solid #d9d6cf; color: #5b616b; font-size: 9pt; }
+
+@media print {
+  body { background: #fff; }
+  main { padding: 0; max-width: none; }
+  .no-print { display: none; }
+}

@@ -1,0 +1,36 @@
+# Publishes a release when a tag like v0.2.0 is pushed.
+# Assets:
+#   quality-assemble.zip            -> the extension (downloaded by instalador/actualizar.ps1)
+#   quality-assemble-instalador.zip -> installer for a new machine
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check manifest version matches tag
+        run: |
+          V=$(jq -r .version extension/manifest.json)
+          if [ "v$V" != "$GITHUB_REF_NAME" ]; then
+            echo "manifest.json says $V but tag is $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+      - name: Build zips
+        run: |
+          (cd extension && zip -r ../quality-assemble.zip .)
+          (cd instalador && zip -r ../quality-assemble-instalador.zip .)
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" quality-assemble.zip quality-assemble-instalador.zip --title "$GITHUB_REF_NAME" --generate-notes

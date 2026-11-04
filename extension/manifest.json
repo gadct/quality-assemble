@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Quality Assemble",
+  "description": "Guía, registro y evidencia para QA manual. Todo se guarda en este equipo.",
+  "version": "0.2.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4zJrTi06mS9Uv8GZAodntZEMCYUA1p9WYkQl3pu5GX1xJcytHxAs/Yq/o7Ns6nAEL7rCeSIL89XWKFg2UAtXjU05lwH0ZavS2iThHwlpFBFl/Ox81n3f+0qvSCNZkDPvl0mMFY2k+EA0QgU20axB1dsq0M+FMdrkd4U727b8ye9EjfWKmM2FhN4hbOQcT3MzO7maHzTyb9B2VjqfqK1wNopzIXMqtMoTj2vhaRJycTdU3JwzjVlXLNWeKgYs/9APkvMYFJE8QHIdS5cwfqI/xEkQAQzJzmD1nSh84nAv6mvZw7eb4VhDWZ7Je1/r8elGMX20uwgW4KHzGstCwf4YkwIDAQAB",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "unlimitedStorage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Abrir Quality Assemble"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "capture-main.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "capture-bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
